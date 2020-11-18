@@ -62,6 +62,83 @@ module.exports = {
       return res.status(statusCode.INTERNAL_SERVER_ERROR).send(util.fail(statusCode.INTERNAL_SERVER_ERROR, responseMessage.SIGN_IN_FAIL));
     }
   },
+
+  put: async (req, res) => {
+    const { id } = req.params;
+    const { email, userName, password } = req.body;
+
+    try {
+      const user = await User.findOne({
+        where: {
+          id,
+        },
+        attributes: ["id", "email", "userName", "password"],
+      });
+
+      if (!User) {
+        return res.status(statusCode.BAD_REQUEST)
+          .send(util.fail(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE));
+      }
+
+      const salt = crypto.randomBytes(64).toString('base64');
+      const hashedPassword = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('base64');
+
+      const modiyUser = await User.update({
+        email,
+        password: hashedPassword,
+        userName,
+        salt,
+      },
+        {
+          where: {
+            id,
+          },
+        });
+
+      return res
+        .status(statusCode.OK)
+        .send(util.success(statusCode.OK, responseMessage.UPDATE_USER_SUCCESS));
+
+    } catch (err) {
+      console.error(error);
+      return res
+        .status(statusCode.INTERNAL_SERVER_ERROR)
+        .send(util.fail(statusCode.INTERNAL_SERVER_ERROR, responseMessage.UPDATE_USER_FAIL));
+    }
+  },
+
+  deleteUser: async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const user = await User.findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (!User) {
+        return res.status(statusCode.BAD_REQUEST)
+          .send(util.fail(statusCode.BAD_REQUEST, responseMessage.NULL_VALUE));
+      }
+
+      const deleteUsers = await User.destroy({
+        where: {
+          id,
+        },
+        attributes: ['id', 'userName', 'email'],
+      });
+      return res
+        .status(statusCode.OK)
+        .send(util.success(statusCode.OK, responseMessage.DELETE_USER_SUCCESS));
+    } catch (err) {
+      console.error(error);
+      return res
+        .status(statusCode.INTERNAL_SERVER_ERROR)
+        .send(util.fail(statusCode.INTERNAL_SERVER_ERROR, responseMessage.DELETE_USER_FAIL));
+    }
+  },
+
   readAll: async (req, res) => {
     try {
       const users = await User.findAll({
